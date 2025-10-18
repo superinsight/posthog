@@ -60,7 +60,7 @@ The fastest and most reliable way to get started with PostHog is signing up for 
 If you want to self-host PostHog, you can deploy a hobby instance in one line on Linux with Docker (recommended 4GB memory):
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/posthog/posthog/HEAD/bin/deploy-hobby)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/superinsight/posthog/HEAD/bin/deploy-hobby)"
 ```
 
 Open source deployments should scale to approximately 100k events per month, after which we recommend [migrating to a PostHog Cloud](https://posthog.com/docs/migrate/migrate-to-cloud).
