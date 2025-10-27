@@ -1,0 +1,7 @@
+#!/bin/bash
+echo "--------------------------------------------"
+echo "SKIP_ASYNC_MIGRATIONS_SETUP: $SKIP_ASYNC_MIGRATIONS_SETUP"
+echo "POSTHOG_SKIP_MIGRATION_CHECKS: $POSTHOG_SKIP_MIGRATION_CHECKS"
+
+/compose/wait
+./bin/docker-server

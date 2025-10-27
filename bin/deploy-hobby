@@ -141,58 +141,30 @@ EOF
 
 # Download GeoLite2-City.mmdb if it doesn't exist
 echo "Downloading GeoIP database file"
-apt-get update &&
-apt-get install -y --no-install-recommends curl ca-certificates brotli &&
+sudo apt-get update &&
+sudo apt-get install -y --no-install-recommends curl ca-certificates brotli &&
 mkdir -p ./share &&
 if [ ! -f ./share/GeoLite2-City.mmdb ]; then
     curl -L 'https://mmdbcdn.posthog.net/' --http1.1 | brotli --decompress --output=./share/GeoLite2-City.mmdb &&
     echo '{\"date\": \"'"$(date +%Y-%m-%d)"'\"}' > ./share/GeoLite2-City.json;
     chmod 644 ./share/GeoLite2-City.mmdb &&
     chmod 644 ./share/GeoLite2-City.json
+    echo "GeoIP database file downloaded"
 fi
 
 # write entrypoint
 # NOTE: this is duplicated in bin/upgrade-hobby, so if you change it here,
 # change it there too.
+
 rm -rf compose
 mkdir -p compose
-cat > compose/start <<EOF
-#!/bin/bash
-./compose/wait
-./bin/migrate
-./bin/docker-server
-EOF
-chmod +x compose/start
 
-cat > compose/temporal-django-worker <<EOF
-#!/bin/bash
-./bin/temporal-django-worker
-EOF
-chmod +x compose/temporal-django-worker
+cp posthog/bin-compose/* compose/
+chmod +x compose/*
 
-# write wait script
-cat > compose/wait <<EOF
-#!/usr/bin/env python3
-
-import socket
-import time
-
-def loop():
-    print("Waiting for ClickHouse and Postgres to be ready")
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect(('clickhouse', 9000))
-        print("Clickhouse is ready")
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect(('db', 5432))
-        print("Postgres is ready")
-    except ConnectionRefusedError as e:
-        time.sleep(5)
-        loop()
-
-loop()
-EOF
-chmod +x compose/wait
+# set the start idle as a start command first
+rm compose/start
+mv compose/start-idle compose/start
 
 # setup docker
 # setup docker
@@ -212,20 +184,38 @@ else
 fi
 
 # setup docker-compose
-echo "Setting up Docker Compose"
-sudo curl -L "https://github.com/docker/compose/releases/download/v2.33.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose || true
-sudo chmod +x /usr/local/bin/docker-compose
+# echo "Setting up Docker Compose"
+# sudo curl -L "https://github.com/docker/compose/releases/download/v2.33.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose || true
+# sudo chmod +x /usr/local/bin/docker-compose
 
 # enable docker without sudo
-sudo usermod -aG docker "${USER}" || true
+# sudo usermod -aG docker "${USER}" || true
 
 # start up the stack
 echo "Configuring Docker Compose...."
 rm -f docker-compose.yml
 cp posthog/docker-compose.base.yml docker-compose.base.yml
 cp posthog/docker-compose.hobby.yml docker-compose.yml
+
+# Setup a missing migration tables in clickhouse
+echo "Setting up ClickHouse migration table"
+
+./compose/create-ch-migration-tables
+
+echo "Do migrations manually"
+
+docker compose -f docker-compose.yml up -d web
+docker compose -f docker-compose.yml exec web /compose/migrate
+
+echo "✅ Migrations finished"
+
+# Update start script (this will not do any migrations)
+docker compose -f docker-compose.yml down web
+cp ./posthog/bin-compose/start compose/start
+chmod +x compose/start
+
 echo "Starting the stack!"
-sudo -E docker-compose -f docker-compose.yml up -d --no-build --pull always
+docker compose -f docker-compose.yml up -d --no-build --pull always
 
 echo "We will need to wait ~5-10 minutes for things to settle down, migrations to finish, and TLS certs to be issued"
 echo ""

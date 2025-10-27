@@ -1,0 +1,10 @@
+#!/bin/bash
+
+/compose/migrate-postgres
+sleep 5
+/compose/migrate-clickhouse
+sleep 5
+/compose/migrate-async
+
+echo
+echo "ALL Migrations completed successfully."

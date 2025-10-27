@@ -1,0 +1,31 @@
+#!/bin/bash
+set -e              # Exit on any command failure
+set -o pipefail     # Exit if any command in a pipeline fails
+
+echo "Running ClickHouse migrations..."
+
+# Run migrations and capture status
+python manage.py migrate_clickhouse
+CH_MIGRATE_STATUS=$?
+if [ $CH_MIGRATE_STATUS -ne 0 ]; then
+    echo "Error in migrate_clickhouse, setting error status."
+    exit $CH_MIGRATE_STATUS
+fi
+
+echo
+echo "✅ migrate_clickhouse completed successfully."
+echo
+
+# python manage.py sync_replicated_schema
+# SYNC_STATUS=$?
+# if [ $SYNC_STATUS -ne 0 ]; then
+#     echo "Error in sync_replicated_schema, setting error status."
+#     echo "1" > $CLICKHOUSE_STATUS
+#     exit $SYNC_STATUS
+# fi
+
+# echo
+# echo "✅ sync_replicated_schema completed successfully."
+# echo
+
+echo "ClickHouse migrations completed successfully."

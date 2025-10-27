@@ -1,0 +1,33 @@
+#!/bin/bash
+set -e              # Exit on any command failure
+set -o pipefail     # Exit if any command in a pipeline fails
+
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+
+# NOTE when running in docker, rust might not exist so we need to check for it
+if [ -d "$SCRIPT_DIR/../rust/bin" ]; then
+    echo "Running rust based migrations..."
+    echo
+
+    bash $SCRIPT_DIR/../rust/bin/migrate-cyclotron
+    if [ $? -ne 0 ]; then
+        echo "Error in rust/bin/migrate-cyclotron, exiting."
+        exit 1
+    fi
+
+    echo "Running persons migrations via external non-django migrator..."
+    bash $SCRIPT_DIR/../rust/bin/migrate-persons
+    if [ $? -ne 0 ]; then
+        echo "Error in rust/bin/migrate-persons, exiting."
+        exit 1
+    fi
+
+    echo "Running behavioral cohorts migrations via external non-django migrator..."
+    bash $SCRIPT_DIR/../rust/bin/migrate-behavioral-cohorts
+    if [ $? -ne 0 ]; then
+        echo "Error in rust/bin/migrate-behavioral-cohorts, exiting."
+        exit 1
+    fi
+else
+    echo "No rust found to run migrations..."
+fi

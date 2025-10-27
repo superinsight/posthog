@@ -1,0 +1,19 @@
+#!/bin/bash
+set -e              # Exit on any command failure
+set -o pipefail     # Exit if any command in a pipeline fails
+
+# Run postgres migrations
+echo "Running Postgres migrations..."
+echo
+
+python manage.py migrate
+if [ $? -ne 0 ]; then
+    echo "Error in postgres migrations, exiting."
+    exit 1
+fi
+
+echo
+echo "✅ migrate completed successfully."
+echo
+
+echo "Postgres migrations completed successfully."

@@ -1,0 +1,39 @@
+#!/bin/bash
+
+set -e              # Exit on any command failure
+set -o pipefail     # Exit if any command in a pipeline fails
+
+echo "Running async migrations..."
+echo
+
+# NOTE: we do not apply any non-noop migrations here. Rather these are run
+# manually within the UI. See https://posthog.com/docs/runbook/async-migrations
+# for details.
+python manage.py run_async_migrations --complete-noop-migrations
+if [ $? -ne 0 ]; then
+    echo "Error in run_async_migrations, killing background process and exiting."
+    kill $CLICKHOUSE_PID 2>/dev/null || true
+    rm $CLICKHOUSE_STATUS
+    exit 1
+fi
+
+echo
+echo "✅ run_async_migrations (noops only) completed successfully."
+echo
+
+# NOTE: this check should not fail if a migration isn't complete but within the
+# given async migration posthog version range, thus this should not block e.g.
+# k8s pod deployments.
+python manage.py run_async_migrations --check
+if [ $? -ne 0 ]; then
+    echo "Error in run_async_migrations --check, killing background process and exiting."
+    kill $CLICKHOUSE_PID 2>/dev/null || true
+    rm $CLICKHOUSE_STATUS
+    exit 1
+fi
+
+echo
+echo "✅ run_async_migrations (check) completed successfully."
+echo
+
+echo "Async migrations completed successfully."

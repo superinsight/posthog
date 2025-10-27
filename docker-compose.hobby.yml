@@ -79,6 +79,9 @@ services:
         extends:
             file: docker-compose.base.yml
             service: worker
+        command: /compose/docker-worker-celery --with-scheduler
+        volumes:
+            - ./compose:/compose
         environment:
             SITE_URL: https://$DOMAIN
             SECRET_KEY: $POSTHOG_SECRET
@@ -89,6 +92,7 @@ services:
             OBJECT_STORAGE_ENABLED: true
             ENCRYPTION_SALT_KEYS: $ENCRYPTION_SALT_KEYS
         image: $REGISTRY_URL:$POSTHOG_APP_TAG
+
     web:
         extends:
             file: docker-compose.base.yml
@@ -112,6 +116,7 @@ services:
             OTEL_SERVICE_NAME: 'posthog'
             OTEL_EXPORTER_OTLP_ENDPOINT: ''
             OTEL_SDK_DISABLED: 'true'
+            OPT_OUT_CAPTURE: ${OPT_OUT_CAPTURE:-true}
         depends_on:
             - db
             - redis
